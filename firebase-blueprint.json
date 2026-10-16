@@ -1,0 +1,151 @@
+{
+  "entities": {
+    "Admin": {
+      "title": "Admin",
+      "description": "Administrator allowlist document",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Student or Admin user profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "targetBranch": { "type": "string", "maxLength": 100 },
+        "targetZone": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Test": {
+      "title": "Test",
+      "description": "RRB JE CBT Mock Test or PYQ Test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "examType": { "type": "string", "maxLength": 50 },
+        "isPYQ": { "type": "boolean" },
+        "sourceYear": { "type": "string", "maxLength": 100 },
+        "durationMinutes": { "type": "number" },
+        "totalMarks": { "type": "number" },
+        "positiveMarkPerQuestion": { "type": "number" },
+        "negativeMarkPerQuestion": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "isDemo": { "type": "boolean" },
+        "totalQuestions": { "type": "number" },
+        "subjects": { "type": "array" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "durationMinutes", "totalMarks", "status", "createdBy"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Question within a test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "testId": { "type": "string", "maxLength": 128 },
+        "questionNumber": { "type": "number" },
+        "subject": { "type": "string", "maxLength": 100 },
+        "topic": { "type": "string", "maxLength": 100 },
+        "difficulty": { "type": "string", "maxLength": 50 },
+        "questionText": { "type": "string", "maxLength": 2000 },
+        "options": { "type": "array" },
+        "correctOptionIndex": { "type": "number" },
+        "explanation": { "type": "string", "maxLength": 3000 },
+        "marks": { "type": "number" },
+        "negativeMarks": { "type": "number" },
+        "isPYQ": { "type": "boolean" },
+        "sourceTag": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "testId", "questionText", "options", "correctOptionIndex", "marks"]
+    },
+    "TestAttempt": {
+      "title": "TestAttempt",
+      "description": "Student completed test attempt",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "testId": { "type": "string", "maxLength": 128 },
+        "testTitle": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "enum": ["in_progress", "submitted"] },
+        "timeSpentSeconds": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "attemptedCount": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "incorrectCount": { "type": "number" },
+        "unansweredCount": { "type": "number" },
+        "score": { "type": "number" },
+        "maxMarks": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "testId", "status", "score"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "Bookmarked question for revision",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "testId": { "type": "string", "maxLength": 128 },
+        "questionId": { "type": "string", "maxLength": 128 },
+        "subject": { "type": "string", "maxLength": 100 },
+        "topic": { "type": "string", "maxLength": 100 },
+        "questionText": { "type": "string", "maxLength": 2000 },
+        "options": { "type": "array" },
+        "correctOptionIndex": { "type": "number" },
+        "explanation": { "type": "string", "maxLength": 3000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "questionId", "questionText"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Stores admin UID entries for role authorization"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles for registered students and admins"
+    },
+    "/tests/{testId}": {
+      "schema": "Test",
+      "description": "RRB JE Mock and PYQ Tests"
+    },
+    "/tests/{testId}/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Questions linked to a test"
+    },
+    "/testAttempts/{attemptId}": {
+      "schema": "TestAttempt",
+      "description": "Completed student test submissions and scorecards"
+    },
+    "/bookmarks/{bookmarkId}": {
+      "schema": "Bookmark",
+      "description": "Bookmarked questions for student revision"
+    }
+  }
+}

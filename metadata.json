@@ -1,0 +1,6 @@
+{
+  "name": "Railway JE Prep",
+  "description": "Comprehensive RRB Junior Engineer CBT exam preparation platform with realistic mock tests, timed CBT simulation, subject-wise analytics, and verified syllabus coverage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

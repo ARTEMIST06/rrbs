@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'aryasingh2366@gmail.com' && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
+        incoming().uid == userId &&
+        incoming().email is string &&
+        (incoming().role == 'student' || (incoming().role == 'admin' && isAdmin()));
+      allow update: if isSignedIn() &&
+        (isOwner(userId) || isAdmin()) &&
+        (incoming().role == existing().role || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Tests Collection
+    match /tests/{testId} {
+      allow get: if isSignedIn() && (resource.data.status == 'published' || isAdmin());
+      allow list: if isSignedIn() && (resource.data.status == 'published' || isAdmin());
+      allow create: if isAdmin() && isValidId(testId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+
+      // Questions Subcollection
+      match /questions/{questionId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // Test Attempts Collection
+    match /testAttempts/{attemptId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        isValidId(attemptId);
+      allow update: if isSignedIn() &&
+        existing().userId == request.auth.uid &&
+        existing().status != 'submitted';
+      allow delete: if isAdmin();
+    }
+
+    // Bookmarks Collection
+    match /bookmarks/{bookmarkId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        isValidId(bookmarkId);
+      allow update, delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}
