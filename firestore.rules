@@ -92,5 +92,10 @@ service cloud.firestore {
         isValidId(bookmarkId);
       allow update, delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
+
+    // PDF Import Sessions (Admin only)
+    match /pdfImportSessions/{sessionId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

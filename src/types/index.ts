@@ -132,3 +132,55 @@ export interface Bookmark {
   sourceTag?: string;
   createdAt: string;
 }
+
+// PDF-to-Question-Bank Extraction & Verification Types
+export type VerificationStatus = 'verified' | 'needs_review' | 'ambiguous' | 'missing_answer';
+export type ExamPriority = 'High' | 'Medium' | 'Low';
+
+export interface ExtractedQuestion {
+  id: string;
+  originalNumber?: number | string;
+  questionText: string;
+  options: [string, string, string, string] | string[];
+  sourceAnswer?: string;                // Source answer label e.g. "B" or "Option (2)"
+  correctOptionIndex: number;           // 0, 1, 2, 3 or -1 if unverified/missing
+  independentlyVerifiedAnswer?: string; // Independent verification result
+  verificationStatus: VerificationStatus;
+  verificationNotes: string;            // Discrepancy reasoning or verification source
+  confidenceScore: number;              // 0-100%
+  explanation: string;
+  subject: string;
+  topic: string;
+  subtopic?: string;
+  difficulty: DifficultyLevel;
+  examStage: 'CBT-1' | 'CBT-2' | 'Unspecified';
+  examYear?: string;
+  shift?: string;
+  pageNumber?: number;
+  sourceFilename?: string;
+  hasDiagram: boolean;
+  diagramDescription?: string;
+  examPriority: ExamPriority;
+  priorityRationale: string;
+  isPYQ: boolean;
+  referenceSource?: string;             // e.g. "RRB 2019 Key"
+  isDuplicate?: boolean;
+  duplicateOfId?: string;
+  isApproved?: boolean;
+  isRejected?: boolean;
+  adminEdited?: boolean;
+}
+
+export interface PDFImportSession {
+  id: string;
+  filename: string;
+  fileSize: number;
+  totalPages: number;
+  processedPages: number;
+  failedPages: number[];
+  status: 'idle' | 'uploading' | 'parsing_pdf' | 'extracting_batch' | 'completed' | 'partial_failure' | 'error';
+  errorMessage?: string;
+  extractedQuestions: ExtractedQuestion[];
+  createdAt: string;
+  updatedAt: string;
+}

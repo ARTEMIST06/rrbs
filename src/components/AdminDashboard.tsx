@@ -27,20 +27,24 @@ import {
   Edit3,
 } from 'lucide-react';
 
+import { PDFQuestionImporter } from './PDFQuestionImporter';
+
 interface AdminDashboardProps {
   tests: Test[];
+  existingQuestions?: Question[];
   onRefreshTests: () => Promise<void>;
   onPreviewTest: (test: Test) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   tests,
+  existingQuestions = [],
   onRefreshTests,
   onPreviewTest,
 }) => {
   const { user, isAdmin } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'tests' | 'create_test' | 'upload_questions' | 'manage_questions'>('tests');
+  const [activeTab, setActiveTab] = useState<'tests' | 'create_test' | 'upload_questions' | 'manage_questions' | 'pdf_importer'>('tests');
   const [selectedTestForQuestions, setSelectedTestForQuestions] = useState<Test | null>(null);
   const [testQuestions, setTestQuestions] = useState<Question[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState<boolean>(false);
@@ -399,6 +403,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('pdf_importer')}
+            className="flex items-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md transition"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>Import Questions from PDF</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('create_test')}
             className="flex items-center space-x-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition"
           >
@@ -416,18 +428,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2 text-xs">
+      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2 text-xs overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('tests')}
-          className={`px-4 py-2 rounded-lg font-bold transition ${
+          className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${
             activeTab === 'tests' ? 'bg-[#1E3E62] text-amber-400' : 'text-slate-400 hover:text-white'
           }`}
         >
           All Tests ({tests.length})
         </button>
         <button
+          onClick={() => setActiveTab('pdf_importer')}
+          className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap flex items-center space-x-1.5 ${
+            activeTab === 'pdf_importer' ? 'bg-[#1E3E62] text-amber-400' : 'text-purple-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>PDF-to-Question-Bank (AI OCR & Verification)</span>
+        </button>
+        <button
           onClick={() => setActiveTab('create_test')}
-          className={`px-4 py-2 rounded-lg font-bold transition ${
+          className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${
             activeTab === 'create_test' ? 'bg-[#1E3E62] text-amber-400' : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -437,7 +458,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <>
             <button
               onClick={() => setActiveTab('manage_questions')}
-              className={`px-4 py-2 rounded-lg font-bold transition ${
+              className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${
                 activeTab === 'manage_questions' ? 'bg-[#1E3E62] text-amber-400' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -445,7 +466,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('upload_questions')}
-              className={`px-4 py-2 rounded-lg font-bold transition ${
+              className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${
                 activeTab === 'upload_questions' ? 'bg-[#1E3E62] text-amber-400' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -993,6 +1014,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* TAB 5: PDF-TO-QUESTION-BANK IMPORTER */}
+      {activeTab === 'pdf_importer' && (
+        <PDFQuestionImporter
+          tests={tests}
+          existingQuestions={existingQuestions}
+          onQuestionsImported={async () => {
+            await onRefreshTests();
+            setActiveTab('tests');
+          }}
+        />
       )}
     </div>
   );

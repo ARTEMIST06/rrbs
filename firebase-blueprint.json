@@ -120,6 +120,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "questionId", "questionText"]
+    },
+    "PDFImportSession": {
+      "title": "PDFImportSession",
+      "description": "PDF question extraction and verification session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "filename": { "type": "string", "maxLength": 255 },
+        "fileSize": { "type": "number" },
+        "totalPages": { "type": "number" },
+        "processedPages": { "type": "number" },
+        "failedPages": { "type": "array" },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "filename", "status", "createdBy"]
     }
   },
   "firestore": {
@@ -146,6 +164,10 @@
     "/bookmarks/{bookmarkId}": {
       "schema": "Bookmark",
       "description": "Bookmarked questions for student revision"
+    },
+    "/pdfImportSessions/{sessionId}": {
+      "schema": "PDFImportSession",
+      "description": "Admin PDF question extraction sessions"
     }
   }
 }

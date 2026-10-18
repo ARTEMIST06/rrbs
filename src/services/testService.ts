@@ -13,40 +13,58 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Bookmark, Question, SubjectScoreBreakdown, Test, TestAttempt } from '../types';
 import { SEED_TESTS } from '../data/seedData';
 
+function mergeTestsWithSeedAndLocal(firestoreTests: Test[]): Test[] {
+  const map = new Map<string, Test>();
+  
+  // 1. Seed tests (including geet 08-10-25 todays her work)
+  SEED_TESTS.forEach(({ questions: _, ...t }) => {
+    map.set(t.id, t);
+  });
+
+  // 2. Local storage custom tests
+  try {
+    const local: Test[] = JSON.parse(localStorage.getItem('custom_tests') || '[]');
+    local.forEach(t => map.set(t.id, t));
+  } catch (e) {
+    // ignore
+  }
+
+  // 3. Firestore tests
+  firestoreTests.forEach(t => {
+    map.set(t.id, t);
+  });
+
+  return Array.from(map.values());
+}
+
 // Fetch published tests for students
 export async function getPublishedTests(): Promise<Test[]> {
+  let firestoreList: Test[] = [];
   try {
     const testsRef = collection(db, 'tests');
     const q = query(testsRef, where('status', '==', 'published'));
     const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      // Return seed tests if database hasn't been seeded yet
-      return SEED_TESTS.map(({ questions: _, ...testData }) => testData);
-    }
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
+    firestoreList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
   } catch (error) {
-    console.warn('Using seed tests fallback due to:', error);
-    return SEED_TESTS.map(({ questions: _, ...testData }) => testData);
+    console.warn('Firestore getPublishedTests warning:', error);
   }
+
+  const all = mergeTestsWithSeedAndLocal(firestoreList);
+  return all.filter(t => t.status === 'published');
 }
 
 // Fetch all tests for admin
 export async function getAllTests(): Promise<Test[]> {
+  let firestoreList: Test[] = [];
   try {
     const testsRef = collection(db, 'tests');
     const snapshot = await getDocs(testsRef);
-
-    if (snapshot.empty) {
-      return SEED_TESTS.map(({ questions: _, ...testData }) => testData);
-    }
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
+    firestoreList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
   } catch (error) {
-    console.warn('Fallback to seed tests for admin:', error);
-    return SEED_TESTS.map(({ questions: _, ...testData }) => testData);
+    console.warn('Firestore getAllTests warning:', error);
   }
+
+  return mergeTestsWithSeedAndLocal(firestoreList);
 }
 
 // Fetch questions for a test
@@ -55,23 +73,41 @@ export async function getTestQuestions(testId: string): Promise<Question[]> {
     const questionsRef = collection(db, 'tests', testId, 'questions');
     const snapshot = await getDocs(questionsRef);
 
-    if (snapshot.empty) {
-      const matched = SEED_TESTS.find(t => t.id === testId);
-      if (matched) return matched.questions;
-      return [];
+    if (!snapshot.empty) {
+      const questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
+      return questions.sort((a, b) => a.questionNumber - b.questionNumber);
     }
-
-    const questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
-    return questions.sort((a, b) => a.questionNumber - b.questionNumber);
   } catch (error) {
-    console.warn('Falling back to seed questions:', error);
-    const matched = SEED_TESTS.find(t => t.id === testId);
-    return matched ? matched.questions : [];
+    console.warn('Falling back to local/seed questions for:', testId, error);
   }
+
+  // Check local storage
+  try {
+    const localQs: Question[] = JSON.parse(localStorage.getItem(`questions_${testId}`) || '[]');
+    if (localQs.length > 0) {
+      return localQs.sort((a, b) => a.questionNumber - b.questionNumber);
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Check seed tests
+  const matched = SEED_TESTS.find(t => t.id === testId);
+  return matched && matched.questions ? matched.questions : [];
 }
 
 // Save or update a test (Admin)
 export async function saveTest(test: Test): Promise<void> {
+  // Always persist locally first
+  try {
+    const local: Test[] = JSON.parse(localStorage.getItem('custom_tests') || '[]');
+    const filtered = local.filter(t => t.id !== test.id);
+    filtered.unshift(test);
+    localStorage.setItem('custom_tests', JSON.stringify(filtered));
+  } catch (e) {
+    console.warn('LocalStorage save error:', e);
+  }
+
   try {
     const testDocRef = doc(db, 'tests', test.id);
     await setDoc(testDocRef, {
@@ -79,12 +115,32 @@ export async function saveTest(test: Test): Promise<void> {
       updatedAt: new Date().toISOString(),
     }, { merge: true });
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `tests/${test.id}`);
+    console.warn('Firestore saveTest warning:', error);
   }
 }
 
 // Save or update question (Admin)
 export async function saveQuestion(testId: string, question: Question): Promise<void> {
+  // Always persist locally first
+  try {
+    const localQs: Question[] = JSON.parse(localStorage.getItem(`questions_${testId}`) || '[]');
+    const filtered = localQs.filter(q => q.id !== question.id);
+    filtered.push(question);
+    filtered.sort((a, b) => a.questionNumber - b.questionNumber);
+    localStorage.setItem(`questions_${testId}`, JSON.stringify(filtered));
+
+    // Update test in local storage
+    const localTests: Test[] = JSON.parse(localStorage.getItem('custom_tests') || '[]');
+    const target = localTests.find(t => t.id === testId);
+    if (target) {
+      target.totalQuestions = filtered.length;
+      target.totalMarks = filtered.length * (target.positiveMarkPerQuestion || 1.0);
+      localStorage.setItem('custom_tests', JSON.stringify(localTests));
+    }
+  } catch (e) {
+    console.warn('LocalStorage question save error:', e);
+  }
+
   try {
     const qDocRef = doc(db, 'tests', testId, 'questions', question.id);
     await setDoc(qDocRef, question, { merge: true });
@@ -101,7 +157,7 @@ export async function saveQuestion(testId: string, question: Question): Promise<
       }, { merge: true });
     }
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `tests/${testId}/questions/${question.id}`);
+    console.warn('Firestore question write warning:', error);
   }
 }
 

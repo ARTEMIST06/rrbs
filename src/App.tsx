@@ -44,6 +44,7 @@ const MainApp: React.FC = () => {
   const [tests, setTests] = useState<Test[]>([]);
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [allQuestionsList, setAllQuestionsList] = useState<Question[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Fetch all app data
@@ -61,6 +62,12 @@ const MainApp: React.FC = () => {
       ]);
       setAttempts(loadedAttempts);
       setBookmarks(loadedBookmarks);
+
+      // Fetch questions from tests for duplicate detection
+      if (loadedTests.length > 0) {
+        const sampleQs = await getTestQuestions(loadedTests[0].id);
+        setAllQuestionsList(sampleQs);
+      }
     } catch (err) {
       console.error('Failed to load application data:', err);
     } finally {
@@ -252,6 +259,7 @@ const MainApp: React.FC = () => {
         {currentTab === 'admin' && (
           <AdminDashboard
             tests={tests}
+            existingQuestions={allQuestionsList}
             onRefreshTests={loadData}
             onPreviewTest={handleSelectTest}
           />
